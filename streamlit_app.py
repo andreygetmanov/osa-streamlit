@@ -104,33 +104,7 @@ class ReadmeAIApp:
             )
             st.session_state.selected_provider = selected_provider
 
-            return (
-                repo_path,
-                None,
-                self.get_model_config(selected_provider, None),
-            )
-
-    def render_output_section(self) -> None:
-        """Render README output section."""
-        if st.session_state.readme_generated:
-            tabs = st.tabs(["Preview", "Markdown", "Download"])
-
-            with tabs[0]:
-                st.markdown(
-                    st.session_state.readme_content, unsafe_allow_html=True
-                )
-
-            with tabs[1]:
-                st.code(st.session_state.readme_content, language="markdown")
-
-            with tabs[2]:
-                st.download_button(
-                    "Download README.md",
-                    st.session_state.readme_content,
-                    file_name="README.md",
-                    mime="text/markdown",
-                    use_container_width=True,
-                )
+            return repo_path
 
     def get_model_config(self, provider: str, model: str) -> dict:
         """Get model configuration based on provider."""
@@ -139,99 +113,59 @@ class ReadmeAIApp:
             "model": model,
         }
 
-    def build_command(
-        self, repo_path: str, output_path: str, config: dict, options: dict
-    ) -> list[str]:
-        """Build command for readme-ai CLI."""
-        cmd = [
-            "readmeai",
-            "--repository",
-            repo_path,
-            "--output",
-            output_path,
-            "--api",
-            config["provider"],
-        ]
-
-        return cmd
-
-    async def run_osa(
-        self, repo_path: str, api_key: str, config: dict, options: dict
-    ) -> None:
-        """Run OSA using provided configuration."""
+    async def run_osa_tool(self, repo_path: str) -> None:
+        """Run the osa-tools application."""
         try:
-            with tempfile.NamedTemporaryFile(
-                suffix=".md", mode="w+", delete=False
-            ) as tmp:
-                command = self.build_command(
-                    repo_path, tmp.name, config, options
-                )
-                await self.execute_command(command, api_key, tmp.name)
-
-                with open(tmp.name) as f:
-                    st.session_state.readme_content = f.read()
-                    st.session_state.readme_generated = True
-
-        except Exception as e:
-            st.error(f"Error generating README: {e!s}")
-            logger.error(f"README generation failed: {e!s}", exc_info=True)
-
-    async def execute_command(
-        self, command: list[str], api_key: str, output_path: str
-    ) -> None:
-        """Execute the command and handle its output."""
-        with st.spinner("Generating README..."):
-            env = os.environ.copy()
-
+            # Разделяем команду на отдельные аргументы для create_subprocess_exec
             process = await asyncio.create_subprocess_exec(
-                *command,
+                "python",
+                "Open-Source-Advisor/main.py",
+                "-r",
+                repo_path,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=env,
             )
 
             output_container = st.empty()
-            stderr_accumulated = ""
+            stdout_accumulated = ""
 
             while True:
-                try:
-                    stderr_line = await process.stderr.readline()
-                    if not stderr_line:
-                        break
-
-                    if line := stderr_line.decode().strip():
-                        stderr_accumulated += line + "\n"
-                        output_container.text_area(
-                            "Generation Logs",
-                            value=stderr_accumulated,
-                            height=150,
-                        )
-                except Exception as e:
-                    logger.error(f"Error reading process output: {e}")
+                stdout_line = await process.stdout.readline()
+                if not stdout_line:
                     break
 
+                if line := stdout_line.decode().strip():
+                    stdout_accumulated += line + "\n"
+                    output_container.text_area(
+                        "Console Output",
+                        value=stdout_accumulated,
+                        height=150,
+                    )
+
             returncode = await process.wait()
-            if returncode != 0:
-                raise subprocess.CalledProcessError(
-                    returncode, command, stderr_accumulated
-                )
+            if returncode == 0:
+                st.success("Everything is alright")
+            else:
+                stderr_output = await process.stderr.read()
+                error_message = stderr_output.decode().strip()
+                st.error(f"Error running OSA tool: {error_message}")
+                logger.error(f"OSA tool execution failed with code {returncode}: {error_message}")
+
+        except Exception as e:
+            st.error(f"Error executing OSA tool: {e!s}")
+            logger.error(f"OSA tool execution failed: {e!s}", exc_info=True)
 
     def run(self) -> None:
         """Run the Streamlit application."""
         self.render_header()
 
-        repo_path, api_key, model_config = self.render_sidebar()
+        repo_path = self.render_sidebar()
 
         col1, _ = st.columns(2)
         with col1:
             if st.button("Run OSA", use_container_width=True):
-                self.loop.run_until_complete(
-                    self.run_osa(
-                        repo_path, api_key, model_config, {}
-                    )
-                )
+                self.loop.run_until_complete(self.run_osa_tool(repo_path))
 
-        self.render_output_section()
 
     def __del__(self):
         """Cleanup the event loop on deletion."""
@@ -240,7 +174,6 @@ class ReadmeAIApp:
                 self.loop.close()
             except Exception as e:
                 logger.error(f"Error closing event loop: {e}")
-
 
 if __name__ == "__main__":
     app = ReadmeAIApp()
