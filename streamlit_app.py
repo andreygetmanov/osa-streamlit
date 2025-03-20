@@ -3,8 +3,11 @@ import logging
 import os
 import subprocess
 import tempfile
+from dotenv import load_dotenv
 
 import streamlit as st
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -55,6 +58,9 @@ class ReadmeAIApp:
         self.setup_page_config()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+        self.git_token = os.getenv("GIT_TOKEN")
+        if not self.git_token:
+            logger.warning("GIT_TOKEN not found in environment variables")
 
     def init_session_state(self) -> None:
         if "readme_generated" not in st.session_state:
@@ -86,7 +92,7 @@ class ReadmeAIApp:
                 use_container_width=False,
             )
 
-    def render_sidebar(self) -> tuple[str, str, dict]:
+    def render_sidebar(self) -> str:
         """Render sidebar with configuration options."""
         with st.sidebar:
             st.title("Configuration")
@@ -95,6 +101,12 @@ class ReadmeAIApp:
                 "Repository URL/Path",
                 help="Enter a GitHub repository URL or local path",
             )
+
+            token_status = "✅ Found" if self.git_token else "❌ Not found in .env"
+            st.info(f"GIT_TOKEN status: {token_status}")
+
+            if not self.git_token:
+                st.warning("GIT_TOKEN not found in .env file. Some features may not work correctly.")
 
             st.subheader("LLM Provider")
             selected_provider = st.radio(
@@ -116,14 +128,21 @@ class ReadmeAIApp:
     async def run_osa_tool(self, repo_path: str) -> None:
         """Run the osa-tools application."""
         try:
+            # Создаем копию текущих переменных окружения
+            env = os.environ.copy()
+
+            # Убедимся, что GIT_TOKEN передается в процесс
+            if self.git_token:
+                env["GIT_TOKEN"] = self.git_token
+
             # Разделяем команду на отдельные аргументы для create_subprocess_exec
             process = await asyncio.create_subprocess_exec(
-                "python",
-                "Open-Source-Advisor/main.py",
+                "osa-tool",
                 "-r",
                 repo_path,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=env,  # Передаем обновленные переменные окружения
             )
 
             output_container = st.empty()
@@ -164,8 +183,10 @@ class ReadmeAIApp:
         col1, _ = st.columns(2)
         with col1:
             if st.button("Run OSA", use_container_width=True):
+                if not self.git_token:
+                    st.warning(
+                        "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories.")
                 self.loop.run_until_complete(self.run_osa_tool(repo_path))
-
 
     def __del__(self):
         """Cleanup the event loop on deletion."""
