@@ -69,6 +69,12 @@ class ReadmeAIApp:
             st.session_state.readme_content = ""
         if "selected_provider" not in st.session_state:
             st.session_state.selected_provider = "ITMO"
+        if "translate_dirs" not in st.session_state:
+            st.session_state.translate_dirs = False
+        if "generate_workflows" not in st.session_state:
+            st.session_state.generate_workflows = False
+        if "ensure_license" not in st.session_state:
+            st.session_state.ensure_license = False
 
     def setup_page_config(self) -> None:
         """Configure Streamlit page settings."""
@@ -115,6 +121,10 @@ class ReadmeAIApp:
                 horizontal=True,
             )
             st.session_state.selected_provider = selected_provider
+            st.subheader("Additional Options")
+            st.session_state.translate_dirs = st.checkbox("Translate dirs", value=st.session_state.translate_dirs)
+            st.session_state.generate_workflows = st.checkbox("Generate workflows", value=st.session_state.generate_workflows)
+            st.session_state.ensure_license = st.checkbox("Ensure license", value=st.session_state.ensure_license)
 
             return repo_path
 
@@ -135,16 +145,27 @@ class ReadmeAIApp:
             if self.git_token:
                 env["GIT_TOKEN"] = self.git_token
 
-            # Разделяем команду на отдельные аргументы для create_subprocess_exec
-            process = await asyncio.create_subprocess_exec(
+            cmd = [
                 "osa-tool",
-                "-r",
-                repo_path,
+                "-r", repo_path,
                 "--delete-dir",
+            ]
+
+            if st.session_state.translate_dirs:
+                cmd.append("--translate-dirs")
+            if st.session_state.generate_workflows:
+                cmd.append("--generate-workflows")
+            if st.session_state.ensure_license:
+                cmd.append("--ensure-license")
+
+
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=env,  # Передаем обновленные переменные окружения
+                env=env,
             )
+
 
             output_container = st.empty()
             stdout_accumulated = ""
