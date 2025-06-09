@@ -140,6 +140,10 @@ class ReadmeAIApp:
                 "osa-tool",
                 "-r",
                 repo_path,
+                "--not-publish-results",
+                "True",
+                "--delete-dir",
+                "True",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=env,  # Передаем обновленные переменные окружения
