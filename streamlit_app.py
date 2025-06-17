@@ -1,11 +1,14 @@
 import asyncio
 import logging
 import os
-import subprocess
-import tempfile
-from dotenv import load_dotenv
+import sys
+
+if 'win32' in sys.platform:
+    # workaround for Windows
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 import streamlit as st
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -13,7 +16,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
 
 TITLE = "README-AI"
 DESCRIPTION = ""
@@ -48,7 +50,8 @@ HEADER_STYLES = ["classic", "modern", "compact", "ascii", "ascii_box", "svg"]
 
 TOC_STYLES = ["bullet", "fold", "links", "number", "roman"]
 
-class ReadmeAIApp:
+
+class OsaApp:
     """
     Streamlit web app serving the readme-ai CLI.
     """
@@ -56,7 +59,12 @@ class ReadmeAIApp:
     def __init__(self):
         self.init_session_state()
         self.setup_page_config()
-        self.loop = asyncio.new_event_loop()
+
+        if 'win32' in sys.platform:
+            # workaround for Windows
+            self.loop = asyncio.ProactorEventLoop()
+        else:
+            self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.git_token = os.getenv("GIT_TOKEN")
         if not self.git_token:
@@ -218,6 +226,7 @@ class ReadmeAIApp:
             except Exception as e:
                 logger.error(f"Error closing event loop: {e}")
 
+
 if __name__ == "__main__":
-    app = ReadmeAIApp()
+    app = OsaApp()
     app.run()
