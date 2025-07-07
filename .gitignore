@@ -1,1 +1,4 @@
 .qodo
+.env
+venv
+.streamlit
