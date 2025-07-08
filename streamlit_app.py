@@ -3,9 +3,9 @@ import logging
 import os
 import subprocess
 import tempfile
-from dotenv import load_dotenv
 
 import streamlit as st
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -158,14 +158,12 @@ class ReadmeAIApp:
             if st.session_state.ensure_license:
                 cmd.append("--ensure-license")
 
-
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=env,
             )
-
 
             output_container = st.empty()
             stdout_accumulated = ""
@@ -200,7 +198,16 @@ class ReadmeAIApp:
         """Run the Streamlit application."""
         self.render_header()
 
+        if not st.experimental_user.is_logged_in:
+            if st.button("Log in with AimClub"):
+                st.login("aimclub")
+            if st.button("Log in with Google"):
+                st.login("google")
+            st.stop()
+
         repo_path = self.render_sidebar()
+        st.button("Log out", on_click=st.logout)
+        st.markdown(f"Welcome! {st.experimental_user.name}")
 
         col1, _ = st.columns(2)
         with col1:
