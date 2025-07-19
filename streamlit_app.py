@@ -61,14 +61,39 @@ class OsaToolApp:
             },
         )
 
-    def render_header(self) -> None:
-        """Render application header."""
-        col1, col2, col3 = st.columns([1, 1, 1])  # Создаем три колонки
-        with col2:  # Используем центральную колонку
-            st.image(
-                "assets/osa_logo.png",
-                width=500,  # Настройте ширину по вашему усмотрению
-                use_container_width=False,
+    def render_login_screen(self) -> None:
+        """Render application login screen."""
+        _, center, _ = st.columns(3)
+        with center:
+
+            _, center, _ = st.columns([0.1, 0.8, 0.1])
+
+            with center:
+                st.image(
+                    "assets/osa_logo.png",
+                    use_container_width=True,
+                )
+                st.container(height=20, border=False)
+
+            with st.container(border=True, height=250):
+                st.markdown(
+                    '<h2 style="text-align: center;">Sign in to OSA</h2>',
+                    unsafe_allow_html=True,
+                )
+
+                with st.container(border=True):
+                    if st.button(
+                        "Log in with AimClub",
+                        use_container_width=True,
+                        type="primary",
+                    ):
+                        st.login("aimclub")
+                    if st.button("Log in with Google", use_container_width=True):
+                        st.login("google")
+
+            st.markdown(
+                '<h6 style="text-align: center;">Created by ITMO with ❤️</h6>',
+                unsafe_allow_html=True,
             )
 
     def render_sidebar(self) -> str:
@@ -85,7 +110,9 @@ class OsaToolApp:
             st.info(f"GIT_TOKEN status: {token_status}")
 
             if not self.git_token:
-                st.warning("GIT_TOKEN not found in .env file. Some features may not work correctly.")
+                st.warning(
+                    "GIT_TOKEN not found in .env file. Some features may not work correctly."
+                )
 
             st.subheader("LLM Provider")
             selected_provider = st.radio(
@@ -95,9 +122,15 @@ class OsaToolApp:
             )
             st.session_state.selected_provider = selected_provider
             st.subheader("Additional Options")
-            st.session_state.translate_dirs = st.checkbox("Translate dirs", value=st.session_state.translate_dirs)
-            st.session_state.generate_workflows = st.checkbox("Generate workflows", value=st.session_state.generate_workflows)
-            st.session_state.ensure_license = st.checkbox("Ensure license", value=st.session_state.ensure_license)
+            st.session_state.translate_dirs = st.checkbox(
+                "Translate dirs", value=st.session_state.translate_dirs
+            )
+            st.session_state.generate_workflows = st.checkbox(
+                "Generate workflows", value=st.session_state.generate_workflows
+            )
+            st.session_state.ensure_license = st.checkbox(
+                "Ensure license", value=st.session_state.ensure_license
+            )
 
             return repo_path
 
@@ -120,7 +153,8 @@ class OsaToolApp:
 
             cmd = [
                 "osa-tool",
-                "-r", repo_path,
+                "-r",
+                repo_path,
                 "--delete-dir",
             ]
 
@@ -161,7 +195,9 @@ class OsaToolApp:
                 stderr_output = await process.stderr.read()
                 error_message = stderr_output.decode().strip()
                 st.error(f"Error running OSA tool: {error_message}")
-                logger.error(f"OSA tool execution failed with code {returncode}: {error_message}")
+                logger.error(
+                    f"OSA tool execution failed with code {returncode}: {error_message}"
+                )
 
         except Exception as e:
             st.error(f"Error executing OSA tool: {e!s}")
@@ -169,13 +205,9 @@ class OsaToolApp:
 
     def run(self) -> None:
         """Run the Streamlit application."""
-        self.render_header()
 
         if not st.experimental_user.is_logged_in:
-            if st.button("Log in with AimClub"):
-                st.login("aimclub")
-            if st.button("Log in with Google"):
-                st.login("google")
+            self.render_login_screen()
             st.stop()
 
         repo_path = self.render_sidebar()
@@ -187,7 +219,8 @@ class OsaToolApp:
             if st.button("Run OSA", use_container_width=True):
                 if not self.git_token:
                     st.warning(
-                        "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories.")
+                        "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories."
+                    )
                 self.loop.run_until_complete(self.run_osa_tool(repo_path))
 
     def __del__(self):
