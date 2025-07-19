@@ -15,42 +15,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-TITLE = "README-AI"
-DESCRIPTION = ""
-
 SUPPORTED_MODELS = {
     "ITMO": ["wq_gemma3_27b_8q"],
 }
 
-BADGE_STYLES = [
-    "default",
-    "flat",
-    "flat-square",
-    "plastic",
-    "for-the-badge",
-    "skills",
-    "skills-light",
-    "social",
-]
 
-LOGO_OPTIONS = [
-    "blue",
-    "gradient",
-    "black",
-    "cloud",
-    "purple",
-    "grey",
-    "custom",
-    "llm",
-]
-
-HEADER_STYLES = ["classic", "modern", "compact", "ascii", "ascii_box", "svg"]
-
-TOC_STYLES = ["bullet", "fold", "links", "number", "roman"]
-
-class ReadmeAIApp:
+class OsaToolApp:
     """
-    Streamlit web app serving the readme-ai CLI.
+    Streamlit web app serving the OSA tool CLI.
     """
 
     def __init__(self):
@@ -79,6 +51,7 @@ class ReadmeAIApp:
     def setup_page_config(self) -> None:
         """Configure Streamlit page settings."""
         st.set_page_config(
+            page_icon=":bee:",
             page_title="OSA Tool",
             layout="wide",
             initial_sidebar_state="expanded",
@@ -225,6 +198,7 @@ class ReadmeAIApp:
             except Exception as e:
                 logger.error(f"Error closing event loop: {e}")
 
+
 if __name__ == "__main__":
-    app = ReadmeAIApp()
+    app = OsaToolApp()
     app.run()
