@@ -96,6 +96,22 @@ class OsaToolApp:
                 unsafe_allow_html=True,
             )
 
+    def render_logout_block(self) -> None:
+        """Render application logout block"""
+        left, right = st.columns([0.9, 0.1], vertical_alignment="center")
+
+        with left:
+            username = "User" or st.experimental_user.name
+            st.markdown(
+                f'<h5 style="text-align: right;">Welcome, {username} 👋</h5>',
+                unsafe_allow_html=True,
+            )
+
+        with right:
+            st.button(
+                "Log out", on_click=st.logout, use_container_width=True, type="primary"
+            )
+
     def render_sidebar(self) -> str:
         """Render sidebar with configuration options."""
         with st.sidebar:
@@ -210,9 +226,9 @@ class OsaToolApp:
             self.render_login_screen()
             st.stop()
 
+        self.render_logout_block()
+
         repo_path = self.render_sidebar()
-        st.button("Log out", on_click=st.logout)
-        st.markdown(f"Welcome! {st.experimental_user.name}")
 
         col1, _ = st.columns(2)
         with col1:
