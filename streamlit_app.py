@@ -112,23 +112,11 @@ class OsaToolApp:
                 "Log out", on_click=st.logout, use_container_width=True, type="primary"
             )
 
-    def render_sidebar(self) -> str:
+    def render_sidebar(self) -> None:
         """Render sidebar with configuration options."""
         with st.sidebar:
             st.title("Configuration")
             st.subheader("Repository Settings")
-            repo_path = st.text_input(
-                "Repository URL/Path",
-                help="Enter a GitHub repository URL or local path",
-            )
-
-            token_status = "✅ Found" if self.git_token else "❌ Not found in .env"
-            st.info(f"GIT_TOKEN status: {token_status}")
-
-            if not self.git_token:
-                st.warning(
-                    "GIT_TOKEN not found in .env file. Some features may not work correctly."
-                )
 
             st.subheader("LLM Provider")
             selected_provider = st.radio(
@@ -148,7 +136,38 @@ class OsaToolApp:
                 "Ensure license", value=st.session_state.ensure_license
             )
 
-            return repo_path
+    def render_main_block(self) -> None:
+        left, center, _ = st.columns([0.2, 0.6, 0.2])
+        with left:
+            token_status = "✅ Found" if self.git_token else "❌ Not found in .env"
+            st.info(f"GIT_TOKEN status: {token_status}")
+
+            if not self.git_token:
+                st.warning(
+                    "GIT_TOKEN not found in .env file. Some features may not work correctly."
+                )
+        with center:
+            repo_path = st.text_input(
+                "Repository URL/Path",
+                help="Enter a GitHub repository URL or local path",
+            )
+            st.selectbox(
+                label="Mode",
+                options=("base", "auto", "advanced"),
+                help="""
+                    Operation mode for repository processing  
+                    Default: base
+                    """,
+            )
+            st.container(height=20, border=False)
+            if st.button(
+                "Run OSA", use_container_width=True, disabled=len(repo_path) == 0
+            ):
+                if not self.git_token:
+                    st.warning(
+                        "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories."
+                    )
+                self.loop.run_until_complete(self.run_osa_tool(repo_path))
 
     def get_model_config(self, provider: str, model: str) -> dict:
         """Get model configuration based on provider."""
@@ -201,7 +220,7 @@ class OsaToolApp:
                     output_container.text_area(
                         "Console Output",
                         value=stdout_accumulated,
-                        height=150,
+                        height=350,
                     )
 
             returncode = await process.wait()
@@ -226,18 +245,9 @@ class OsaToolApp:
             self.render_login_screen()
             st.stop()
 
+        self.render_sidebar()
         self.render_logout_block()
-
-        repo_path = self.render_sidebar()
-
-        col1, _ = st.columns(2)
-        with col1:
-            if st.button("Run OSA", use_container_width=True):
-                if not self.git_token:
-                    st.warning(
-                        "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories."
-                    )
-                self.loop.run_until_complete(self.run_osa_tool(repo_path))
+        self.render_main_block()
 
     def __del__(self):
         """Cleanup the event loop on deletion."""
