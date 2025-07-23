@@ -54,7 +54,7 @@ class OsaToolApp:
             page_icon=":bee:",
             page_title="OSA Tool",
             layout="wide",
-            initial_sidebar_state="expanded",
+            initial_sidebar_state="collapsed",
             menu_items={
                 "Get Help": "https://t.me/osa_helpdesk",
                 "About": "https://github.com/ITMO-NSS-team/Open-Source-Advisor",
@@ -88,7 +88,9 @@ class OsaToolApp:
                         type="primary",
                     ):
                         st.login("aimclub")
-                    if st.button("Log in with Google", use_container_width=True):
+                    if st.button(
+                        "Log in with Google", use_container_width=True, disabled=True
+                    ):
                         st.login("google")
 
             st.markdown(
@@ -103,42 +105,22 @@ class OsaToolApp:
         with left:
             username = "User" or st.experimental_user.name
             st.markdown(
-                f'<h5 style="text-align: right;">Welcome, {username} 👋</h5>',
+                f'<h5 style="text-align: left;">Welcome, {username} 👋</h5>',
                 unsafe_allow_html=True,
             )
 
         with right:
             st.button(
-                "Log out", on_click=st.logout, use_container_width=True, type="primary"
+                "Log out",
+                on_click=st.logout,
+                use_container_width=True,
+                type="primary",
+                icon=":material/logout:",
             )
 
     def render_sidebar(self) -> None:
         """Render sidebar with configuration options."""
         with st.sidebar:
-            st.title("Configuration")
-            st.subheader("Repository Settings")
-
-            st.subheader("LLM Provider")
-            selected_provider = st.radio(
-                "Select Provider",
-                options=list(SUPPORTED_MODELS.keys()),
-                horizontal=True,
-            )
-            st.session_state.selected_provider = selected_provider
-            st.subheader("Additional Options")
-            st.session_state.translate_dirs = st.checkbox(
-                "Translate dirs", value=st.session_state.translate_dirs
-            )
-            st.session_state.generate_workflows = st.checkbox(
-                "Generate workflows", value=st.session_state.generate_workflows
-            )
-            st.session_state.ensure_license = st.checkbox(
-                "Ensure license", value=st.session_state.ensure_license
-            )
-
-    def render_main_block(self) -> None:
-        left, center, _ = st.columns([0.2, 0.6, 0.2])
-        with left:
             token_status = "✅ Found" if self.git_token else "❌ Not found in .env"
             st.info(f"GIT_TOKEN status: {token_status}")
 
@@ -146,6 +128,29 @@ class OsaToolApp:
                 st.warning(
                     "GIT_TOKEN not found in .env file. Some features may not work correctly."
                 )
+            # st.title("Configuration")
+            # st.subheader("Repository Settings")
+
+            # st.subheader("LLM Provider")
+            # selected_provider = st.radio(
+            #     "Select Provider",
+            #     options=list(SUPPORTED_MODELS.keys()),
+            #     horizontal=True,
+            # )
+            # st.session_state.selected_provider = selected_provider
+            # st.subheader("Additional Options")
+            # st.session_state.translate_dirs = st.checkbox(
+            #     "Translate dirs", value=st.session_state.translate_dirs
+            # )
+            # st.session_state.generate_workflows = st.checkbox(
+            #     "Generate workflows", value=st.session_state.generate_workflows
+            # )
+            # st.session_state.ensure_license = st.checkbox(
+            #     "Ensure license", value=st.session_state.ensure_license
+            # )
+
+    def render_main_block(self) -> None:
+        _, center, _ = st.columns([0.2, 0.6, 0.2])
         with center:
             repo_path = st.text_input(
                 "Repository URL/Path",
@@ -238,85 +243,35 @@ class OsaToolApp:
             st.error(f"Error executing OSA tool: {e!s}")
             logger.error(f"OSA tool execution failed: {e!s}", exc_info=True)
 
-    def render_git_settings_block(self) -> None:
-        _, center, _ = st.columns([1, 1, 1])
-        with center:
-            with st.container(border=True):
-                st.markdown(
-                    '<h5 style="text-align: center;">Git settings</h5>',
-                    unsafe_allow_html=True,
-                )
-                st.text_input(
-                    label="Branch",
-                    help="""
-                    Branch name of the GitHub repository  
-                    Default: Default branch""",
-                )
-                left, right = st.columns(2)
-                with left:
-                    st.checkbox(
-                        label="No pull request",
-                        help="""
-                    Avoid create pull request for target repository  
-                    Default: False""",
-                    )
-                with right:
-                    st.checkbox(
-                        label="Delete directory",
-                        help="""
-                    Enable deleting the downloaded repository after processing (Linux only)  
-                    Default: False""",
-                    )
-                st.checkbox(
-                    label="No fork",
-                    help="""
-                        Avoid create fork for target repository  
-                        Default: False""",
-                )
-
-    def render_llm_settings_block(self) -> None:
-        left, _, _ = st.columns(3)
-        with left:
-            with st.container(border=True):
-                st.markdown(
-                    '<h5 style="text-align: center;">LLM settings</h5>',
-                    unsafe_allow_html=True,
-                )
-                st.selectbox(
-                    label="API",
-                    options=("llama", "openai", "ollama"),
-                    help="""
-                    LLM API service provider  
-                    Default: llama
-                    """,
-                )
-                st.text_input(
-                    label="Base URL",
-                    value="https://api.openai.com/v1",
-                    help="""
-                    URL of the provider compatible with OpenAI API  
-                    Default: https://api.openai.com/v1""",
-                )
-                st.text_input(
-                    label="Model",
-                    value="gpt-3.5-turbo",
-                    help="""
-                    Specific LLM model to use  
-                    Default: gpt-3.5-turbo""",
-                )
+    def render_main_page(self) -> None:
+        self.render_logout_block()
+        self.render_main_block()
 
     def run(self) -> None:
         """Run the Streamlit application."""
 
-        if not st.experimental_user.is_logged_in:
-            self.render_login_screen()
-            st.stop()
+        # if not st.experimental_user.is_logged_in:
+        #     self.render_login_screen()
+        #     st.stop()
+
+        pg = st.navigation(
+            [
+                st.Page(
+                    self.render_main_page,
+                    title="Home",
+                    icon=":material/home:",
+                    default=True,
+                ),
+                st.Page(
+                    "configuration_page.py",
+                    title="Configuration",
+                    icon=":material/settings:",
+                ),
+            ],
+        )
+        pg.run()
 
         self.render_sidebar()
-        self.render_logout_block()
-        self.render_git_settings_block()
-        self.render_llm_settings_block()
-        self.render_main_block()
 
     def __del__(self):
         """Cleanup the event loop on deletion."""
