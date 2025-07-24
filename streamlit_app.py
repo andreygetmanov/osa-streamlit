@@ -158,21 +158,37 @@ class OsaToolApp:
             )
             st.selectbox(
                 label="Mode",
-                options=("base", "auto", "advanced"),
+                key="mode_select",
+                options=("basic", "auto", "advanced"),
                 help="""
                     Operation mode for repository processing  
-                    Default: base
+                    Default: basic
                     """,
             )
+
+            if (
+                "run_osa_button" in st.session_state
+                and st.session_state.run_osa_button == True
+            ):
+                st.session_state.osa_running = True
+            else:
+                st.session_state.osa_running = False
+
             st.container(height=20, border=False)
             if st.button(
-                "Run OSA", use_container_width=True, disabled=len(repo_path) == 0
+                "Run OSA",
+                use_container_width=True,
+                disabled=len(repo_path) == 0 or st.session_state.osa_running,
+                type="secondary" if len(repo_path) == 0 else "primary",
+                key="run_osa_button",
             ):
                 if not self.git_token:
                     st.warning(
                         "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories."
                     )
-                self.loop.run_until_complete(self.run_osa_tool(repo_path))
+                with st.spinner(show_time=True):
+                    self.loop.run_until_complete(self.run_osa_tool(repo_path))
+                    st.session_state.osa_running = False
 
     def get_model_config(self, provider: str, model: str) -> dict:
         """Get model configuration based on provider."""
@@ -195,15 +211,18 @@ class OsaToolApp:
                 "osa-tool",
                 "-r",
                 repo_path,
+                "-m",
+                st.session_state.mode_select,
+                "--web-mode",
                 "--delete-dir",
             ]
 
-            if st.session_state.translate_dirs:
-                cmd.append("--translate-dirs")
-            if st.session_state.generate_workflows:
-                cmd.append("--generate-workflows")
-            if st.session_state.ensure_license:
-                cmd.append("--ensure-license")
+            # if st.session_state.translate_dirs:
+            #     cmd.append("--translate-dirs")
+            # if st.session_state.generate_workflows:
+            #     cmd.append("--generate-workflows")
+            # if st.session_state.ensure_license:
+            #     cmd.append("--ensure-license")
 
             process = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -250,9 +269,9 @@ class OsaToolApp:
     def run(self) -> None:
         """Run the Streamlit application."""
 
-        # if not st.experimental_user.is_logged_in:
-        #     self.render_login_screen()
-        #     st.stop()
+        if not st.experimental_user.is_logged_in:
+            self.render_login_screen()
+            st.stop()
 
         pg = st.navigation(
             [
