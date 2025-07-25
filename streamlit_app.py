@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import subprocess
 import tempfile
 
 import streamlit as st
@@ -103,7 +102,7 @@ class OsaToolApp:
         left, right = st.columns([0.9, 0.1], vertical_alignment="center")
 
         with left:
-            username = "User" or st.experimental_user.name
+            username = st.experimental_user.get("name", "User")
             st.markdown(
                 f'<h5 style="text-align: left;">Welcome, {username} 👋</h5>',
                 unsafe_allow_html=True,
@@ -152,10 +151,19 @@ class OsaToolApp:
     def render_main_block(self) -> None:
         _, center, _ = st.columns([0.2, 0.6, 0.2])
         with center:
-            repo_path = st.text_input(
-                "Repository URL/Path",
-                help="Enter a GitHub repository URL or local path",
+
+            st.markdown(
+                f'<h3 style="text-align: center;">To start processing a repository, please enter a GitHub repository URL: </h3>',
+                unsafe_allow_html=True,
             )
+            repo_path = st.text_input(
+                "Repository URL",
+                help="""Enter a GitHub repository URL  
+                Example: https://github.com/aimclub/OSA""",
+                placeholder="https://github.com/aimclub/OSA",
+            )
+            st.container(height=10, border=False)
+
             st.selectbox(
                 label="Mode",
                 key="mode_select",
@@ -165,6 +173,14 @@ class OsaToolApp:
                     Default: basic
                     """,
             )
+            _, right = st.columns([0.02, 0.95])
+            with right:
+                multi = """ Currently, three modes available:  
+                        - **Basic:** *Uses a predefined plan of actions*.  
+                        - **Auto**: *Automatically detects and creates the best plan for the entered repository.*  
+                        - **Advanced**: *Highly customizable; build your own plan.*  
+                    """
+                st.markdown(multi)
 
             if (
                 "run_osa_button" in st.session_state
@@ -269,9 +285,9 @@ class OsaToolApp:
     def run(self) -> None:
         """Run the Streamlit application."""
 
-        if not st.experimental_user.is_logged_in:
-            self.render_login_screen()
-            st.stop()
+        # if not st.experimental_user.is_logged_in:
+        #     self.render_login_screen()
+        #     st.stop()
 
         pg = st.navigation(
             [
