@@ -6,6 +6,8 @@ import tempfile
 import streamlit as st
 from dotenv import load_dotenv
 
+from configuration_page import render_configuration_page
+
 load_dotenv()
 
 logging.basicConfig(
@@ -14,38 +16,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-SUPPORTED_MODELS = {
-    "ITMO": ["wq_gemma3_27b_8q"],
-}
-
-
 class OsaToolApp:
     """
     Streamlit web app serving the OSA tool CLI.
     """
 
     def __init__(self):
-        self.init_session_state()
         self.setup_page_config()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.git_token = os.getenv("GIT_TOKEN")
-        if not self.git_token:
+        st.session_state.git_token = os.getenv("GIT_TOKEN")
+        if not st.session_state.git_token:
             logger.warning("GIT_TOKEN not found in environment variables")
-
-    def init_session_state(self) -> None:
-        if "readme_generated" not in st.session_state:
-            st.session_state.readme_generated = False
-        if "readme_content" not in st.session_state:
-            st.session_state.readme_content = ""
-        if "selected_provider" not in st.session_state:
-            st.session_state.selected_provider = "ITMO"
-        if "translate_dirs" not in st.session_state:
-            st.session_state.translate_dirs = False
-        if "generate_workflows" not in st.session_state:
-            st.session_state.generate_workflows = False
-        if "ensure_license" not in st.session_state:
-            st.session_state.ensure_license = False
 
     def setup_page_config(self) -> None:
         """Configure Streamlit page settings."""
@@ -53,10 +35,10 @@ class OsaToolApp:
             page_icon=":bee:",
             page_title="OSA Tool",
             layout="wide",
-            initial_sidebar_state="collapsed",
+            initial_sidebar_state="expanded",
             menu_items={
-                "Get Help": "https://t.me/osa_helpdesk",
                 "About": "https://github.com/ITMO-NSS-team/Open-Source-Advisor",
+                "Get Help": "https://t.me/osa_helpdesk",
             },
         )
 
@@ -97,59 +79,52 @@ class OsaToolApp:
                 unsafe_allow_html=True,
             )
 
-    def render_logout_block(self) -> None:
-        """Render application logout block"""
-        left, right = st.columns([0.9, 0.1], vertical_alignment="center")
-
-        with left:
-            username = st.experimental_user.get("name", "User")
-            st.markdown(
-                f'<h5 style="text-align: left;">Welcome, {username} 👋</h5>',
-                unsafe_allow_html=True,
-            )
-
-        with right:
-            st.button(
-                "Log out",
-                on_click=st.logout,
-                use_container_width=True,
-                type="primary",
-                icon=":material/logout:",
-            )
-
     def render_sidebar(self) -> None:
         """Render sidebar with configuration options."""
         with st.sidebar:
-            token_status = "✅ Found" if self.git_token else "❌ Not found in .env"
-            st.info(f"GIT_TOKEN status: {token_status}")
+            username = st.experimental_user.get("name", "Username")
+            st.markdown(
+                f'<h1 style="text-align: center;">Welcome, {username} 👋</h1>',
+                unsafe_allow_html=True,
+            )
 
-            if not self.git_token:
-                st.warning(
-                    "GIT_TOKEN not found in .env file. Some features may not work correctly."
+            st.divider()
+
+            _, center, _ = st.columns([0.2, 0.6, 0.2])
+            with center:
+                st.link_button(
+                    "About",
+                    url="https://github.com/ITMO-NSS-team/Open-Source-Advisor",
+                    use_container_width=True,
+                    icon=":material/info:",
                 )
-            # st.title("Configuration")
-            # st.subheader("Repository Settings")
-
-            # st.subheader("LLM Provider")
-            # selected_provider = st.radio(
-            #     "Select Provider",
-            #     options=list(SUPPORTED_MODELS.keys()),
-            #     horizontal=True,
-            # )
-            # st.session_state.selected_provider = selected_provider
-            # st.subheader("Additional Options")
-            # st.session_state.translate_dirs = st.checkbox(
-            #     "Translate dirs", value=st.session_state.translate_dirs
-            # )
-            # st.session_state.generate_workflows = st.checkbox(
-            #     "Generate workflows", value=st.session_state.generate_workflows
-            # )
-            # st.session_state.ensure_license = st.checkbox(
-            #     "Ensure license", value=st.session_state.ensure_license
-            # )
+                st.link_button(
+                    "Get Help",
+                    url="https://t.me/osa_helpdesk",
+                    use_container_width=True,
+                    icon=":material/help:",
+                )
+                st.container(height=10, border=False)
+                st.button(
+                    "Log out",
+                    on_click=st.logout,
+                    use_container_width=True,
+                    type="primary",
+                    icon=":material/logout:",
+                )
+            style = """
+            <style>
+            button[data-baseweb="tab"] {
+            font-size: 24px;
+            margin: 0;
+            width: 100%;
+            }
+            </style>
+            """
+            st.write(style, unsafe_allow_html=True)
 
     def render_main_block(self) -> None:
-        _, center, _ = st.columns([0.2, 0.6, 0.2])
+        _, center, _ = st.columns([0.1, 0.8, 0.1])
         with center:
 
             st.markdown(
@@ -162,7 +137,7 @@ class OsaToolApp:
                 Example: https://github.com/aimclub/OSA""",
                 placeholder="https://github.com/aimclub/OSA",
             )
-            st.container(height=10, border=False)
+            st.container(height=5, border=False)
 
             st.selectbox(
                 label="Mode",
@@ -175,7 +150,7 @@ class OsaToolApp:
             )
             _, right = st.columns([0.02, 0.95])
             with right:
-                multi = """ Currently, three modes available:  
+                multi = """ Currently, three modes are available:  
                         - **Basic:** *Uses a predefined plan of actions*.  
                         - **Auto**: *Automatically detects and creates the best plan for the entered repository.*  
                         - **Advanced**: *Highly customizable; build your own plan.*  
@@ -190,21 +165,21 @@ class OsaToolApp:
             else:
                 st.session_state.osa_running = False
 
-            st.container(height=20, border=False)
+            st.container(height=5, border=False)
             if st.button(
                 "Run OSA",
+                icon=":material/emoji_nature:",
                 use_container_width=True,
                 disabled=len(repo_path) == 0 or st.session_state.osa_running,
                 type="secondary" if len(repo_path) == 0 else "primary",
                 key="run_osa_button",
             ):
-                if not self.git_token:
+                if not st.session_state.git_token:
                     st.warning(
                         "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories."
                     )
-                with st.spinner(show_time=True):
-                    self.loop.run_until_complete(self.run_osa_tool(repo_path))
-                    st.session_state.osa_running = False
+                self.loop.run_until_complete(self.run_osa_tool(repo_path))
+                st.session_state.osa_running = False
 
     def get_model_config(self, provider: str, model: str) -> dict:
         """Get model configuration based on provider."""
@@ -220,8 +195,8 @@ class OsaToolApp:
             env = os.environ.copy()
 
             # Убедимся, что GIT_TOKEN передается в процесс
-            if self.git_token:
-                env["GIT_TOKEN"] = self.git_token
+            if st.session_state.git_token:
+                env["GIT_TOKEN"] = st.session_state.git_token
 
             cmd = [
                 "osa-tool",
@@ -232,13 +207,6 @@ class OsaToolApp:
                 "--web-mode",
                 "--delete-dir",
             ]
-
-            # if st.session_state.translate_dirs:
-            #     cmd.append("--translate-dirs")
-            # if st.session_state.generate_workflows:
-            #     cmd.append("--generate-workflows")
-            # if st.session_state.ensure_license:
-            #     cmd.append("--ensure-license")
 
             process = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -278,10 +246,6 @@ class OsaToolApp:
             st.error(f"Error executing OSA tool: {e!s}")
             logger.error(f"OSA tool execution failed: {e!s}", exc_info=True)
 
-    def render_main_page(self) -> None:
-        self.render_logout_block()
-        self.render_main_block()
-
     def run(self) -> None:
         """Run the Streamlit application."""
 
@@ -289,24 +253,19 @@ class OsaToolApp:
         #     self.render_login_screen()
         #     st.stop()
 
-        pg = st.navigation(
-            [
-                st.Page(
-                    self.render_main_page,
-                    title="Home",
-                    icon=":material/home:",
-                    default=True,
-                ),
-                st.Page(
-                    "configuration_page.py",
-                    title="Configuration",
-                    icon=":material/settings:",
-                ),
-            ],
-        )
-        pg.run()
-
         self.render_sidebar()
+
+        tab1, tab2 = st.tabs(
+            [
+                ":material/home: Home",
+                ":material/settings: Configuration",
+            ]
+        )
+        with tab1:
+            self.render_main_block()
+
+        with tab2:
+            render_configuration_page()
 
     def __del__(self):
         """Cleanup the event loop on deletion."""

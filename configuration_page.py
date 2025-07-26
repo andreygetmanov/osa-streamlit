@@ -66,10 +66,21 @@ def render_llm_settings_block() -> None:
         )
 
 
-left, center, right = st.columns([1, 1, 1])
+def render_configuration_page() -> None:
+    left, center, right = st.columns([1, 1, 1])
 
-with left:
-    render_git_settings_block()
+    with left:
+        token_status = (
+            "✅ Found" if st.session_state.git_token else "❌ Not found in .env"
+        )
+        st.info(f"GIT_TOKEN status: {token_status}")
 
-with center:
-    render_llm_settings_block()
+        if not st.session_state.git_token:
+            st.warning(
+                "GIT_TOKEN not found in .env file. Some features may not work correctly."
+            )
+
+        render_git_settings_block()
+
+    with center:
+        render_llm_settings_block()
