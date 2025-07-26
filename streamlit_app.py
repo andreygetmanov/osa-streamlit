@@ -7,6 +7,8 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from configuration_page import render_configuration_page
+from login_page import render_login_page
+from sidebar_page import render_sidebar_page
 
 load_dotenv()
 
@@ -42,88 +44,7 @@ class OsaToolApp:
             },
         )
 
-    def render_login_screen(self) -> None:
-        """Render application login screen."""
-        _, center, _ = st.columns(3)
-        with center:
-
-            _, center, _ = st.columns([0.1, 0.8, 0.1])
-
-            with center:
-                st.image(
-                    "assets/osa_logo.png",
-                    use_container_width=True,
-                )
-                st.container(height=20, border=False)
-
-            with st.container(border=True, height=250):
-                st.markdown(
-                    '<h2 style="text-align: center;">Sign in to OSA</h2>',
-                    unsafe_allow_html=True,
-                )
-
-                with st.container(border=True):
-                    if st.button(
-                        "Log in with AimClub",
-                        use_container_width=True,
-                        type="primary",
-                    ):
-                        st.login("aimclub")
-                    if st.button(
-                        "Log in with Google", use_container_width=True, disabled=True
-                    ):
-                        st.login("google")
-
-            st.markdown(
-                '<h6 style="text-align: center;">Created by ITMO with ❤️</h6>',
-                unsafe_allow_html=True,
-            )
-
-    def render_sidebar(self) -> None:
-        """Render sidebar with configuration options."""
-        with st.sidebar:
-            username = st.experimental_user.get("name", "Username")
-            st.markdown(
-                f'<h1 style="text-align: center;">Welcome, {username} 👋</h1>',
-                unsafe_allow_html=True,
-            )
-
-            st.divider()
-
-            _, center, _ = st.columns([0.2, 0.6, 0.2])
-            with center:
-                st.link_button(
-                    "About",
-                    url="https://github.com/ITMO-NSS-team/Open-Source-Advisor",
-                    use_container_width=True,
-                    icon=":material/info:",
-                )
-                st.link_button(
-                    "Get Help",
-                    url="https://t.me/osa_helpdesk",
-                    use_container_width=True,
-                    icon=":material/help:",
-                )
-                st.container(height=10, border=False)
-                st.button(
-                    "Log out",
-                    on_click=st.logout,
-                    use_container_width=True,
-                    type="primary",
-                    icon=":material/logout:",
-                )
-            style = """
-            <style>
-            button[data-baseweb="tab"] {
-            font-size: 24px;
-            margin: 0;
-            width: 100%;
-            }
-            </style>
-            """
-            st.write(style, unsafe_allow_html=True)
-
-    def render_main_block(self) -> None:
+    def render_main_page(self) -> None:
         _, center, _ = st.columns([0.1, 0.8, 0.1])
         with center:
 
@@ -150,10 +71,10 @@ class OsaToolApp:
             )
             _, right = st.columns([0.02, 0.95])
             with right:
-                multi = """ Currently, three modes are available:  
-                        - **Basic:** *Uses a predefined plan of actions*.  
-                        - **Auto**: *Automatically detects and creates the best plan for the entered repository.*  
-                        - **Advanced**: *Highly customizable; build your own plan.*  
+                multi = """Select the operation mode for repository processing:  
+                        - **Basic:** *run a minimal predefined set of tasks.*  
+                        - **Auto**: *automatically determine necessary actions based on repository analysis.*  
+                        - **Advanced**: *run all enabled features based on a provided configuration.*  
                     """
                 st.markdown(multi)
 
@@ -249,11 +170,11 @@ class OsaToolApp:
     def run(self) -> None:
         """Run the Streamlit application."""
 
-        # if not st.experimental_user.is_logged_in:
-        #     self.render_login_screen()
-        #     st.stop()
+        if not st.experimental_user.is_logged_in:
+            render_login_page()
+            st.stop()
 
-        self.render_sidebar()
+        render_sidebar_page()
 
         tab1, tab2 = st.tabs(
             [
@@ -262,7 +183,7 @@ class OsaToolApp:
             ]
         )
         with tab1:
-            self.render_main_block()
+            self.render_main_page()
 
         with tab2:
             render_configuration_page()
