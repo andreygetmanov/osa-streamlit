@@ -1,11 +1,14 @@
 import asyncio
 import logging
 import os
-import subprocess
 import tempfile
 
 import streamlit as st
 from dotenv import load_dotenv
+
+from configuration_page import render_configuration_page
+from login_page import render_login_page
+from sidebar_page import render_sidebar_page
 
 load_dotenv()
 
@@ -15,118 +18,89 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-TITLE = "README-AI"
-DESCRIPTION = ""
-
-SUPPORTED_MODELS = {
-    "ITMO": ["wq_gemma3_27b_8q"],
-}
-
-BADGE_STYLES = [
-    "default",
-    "flat",
-    "flat-square",
-    "plastic",
-    "for-the-badge",
-    "skills",
-    "skills-light",
-    "social",
-]
-
-LOGO_OPTIONS = [
-    "blue",
-    "gradient",
-    "black",
-    "cloud",
-    "purple",
-    "grey",
-    "custom",
-    "llm",
-]
-
-HEADER_STYLES = ["classic", "modern", "compact", "ascii", "ascii_box", "svg"]
-
-TOC_STYLES = ["bullet", "fold", "links", "number", "roman"]
-
-class ReadmeAIApp:
+class OsaToolApp:
     """
-    Streamlit web app serving the readme-ai CLI.
+    Streamlit web app serving the OSA tool CLI.
     """
 
     def __init__(self):
-        self.init_session_state()
         self.setup_page_config()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
-        self.git_token = os.getenv("GIT_TOKEN")
-        if not self.git_token:
+        st.session_state.git_token = os.getenv("GIT_TOKEN")
+        if not st.session_state.git_token:
             logger.warning("GIT_TOKEN not found in environment variables")
-
-    def init_session_state(self) -> None:
-        if "readme_generated" not in st.session_state:
-            st.session_state.readme_generated = False
-        if "readme_content" not in st.session_state:
-            st.session_state.readme_content = ""
-        if "selected_provider" not in st.session_state:
-            st.session_state.selected_provider = "ITMO"
-        if "translate_dirs" not in st.session_state:
-            st.session_state.translate_dirs = False
-        if "generate_workflows" not in st.session_state:
-            st.session_state.generate_workflows = False
-        if "ensure_license" not in st.session_state:
-            st.session_state.ensure_license = False
 
     def setup_page_config(self) -> None:
         """Configure Streamlit page settings."""
         st.set_page_config(
+            page_icon=":bee:",
             page_title="OSA Tool",
             layout="wide",
             initial_sidebar_state="expanded",
             menu_items={
-                "Get Help": "https://t.me/osa_helpdesk",
                 "About": "https://github.com/ITMO-NSS-team/Open-Source-Advisor",
+                "Get Help": "https://t.me/osa_helpdesk",
             },
         )
 
-    def render_header(self) -> None:
-        """Render application header."""
-        col1, col2, col3 = st.columns([1, 1, 1])  # Создаем три колонки
-        with col2:  # Используем центральную колонку
-            st.image(
-                "assets/osa_logo.png",
-                width=500,  # Настройте ширину по вашему усмотрению
-                use_container_width=False,
-            )
+    def render_main_page(self) -> None:
+        _, center, _ = st.columns([0.1, 0.8, 0.1])
+        with center:
 
-    def render_sidebar(self) -> str:
-        """Render sidebar with configuration options."""
-        with st.sidebar:
-            st.title("Configuration")
-            st.subheader("Repository Settings")
+            st.markdown(
+                f'<h3 style="text-align: center;">To start processing a repository, please enter a GitHub repository URL: </h3>',
+                unsafe_allow_html=True,
+            )
             repo_path = st.text_input(
-                "Repository URL/Path",
-                help="Enter a GitHub repository URL or local path",
+                "Repository URL",
+                help="""Enter a GitHub repository URL  
+                Example: https://github.com/aimclub/OSA""",
+                placeholder="https://github.com/aimclub/OSA",
             )
+            st.container(height=5, border=False)
 
-            token_status = "✅ Found" if self.git_token else "❌ Not found in .env"
-            st.info(f"GIT_TOKEN status: {token_status}")
-
-            if not self.git_token:
-                st.warning("GIT_TOKEN not found in .env file. Some features may not work correctly.")
-
-            st.subheader("LLM Provider")
-            selected_provider = st.radio(
-                "Select Provider",
-                options=list(SUPPORTED_MODELS.keys()),
-                horizontal=True,
+            st.selectbox(
+                label="Mode",
+                key="mode_select",
+                options=("basic", "auto", "advanced"),
+                help="""
+                    Operation mode for repository processing  
+                    Default: basic
+                    """,
             )
-            st.session_state.selected_provider = selected_provider
-            st.subheader("Additional Options")
-            st.session_state.translate_dirs = st.checkbox("Translate dirs", value=st.session_state.translate_dirs)
-            st.session_state.generate_workflows = st.checkbox("Generate workflows", value=st.session_state.generate_workflows)
-            st.session_state.ensure_license = st.checkbox("Ensure license", value=st.session_state.ensure_license)
+            _, right = st.columns([0.02, 0.95])
+            with right:
+                multi = """Select the operation mode for repository processing:  
+                        - **Basic:** *run a minimal predefined set of tasks.*  
+                        - **Auto**: *automatically determine necessary actions based on repository analysis.*  
+                        - **Advanced**: *run all enabled features based on a provided configuration.*  
+                    """
+                st.markdown(multi)
 
-            return repo_path
+            if (
+                "run_osa_button" in st.session_state
+                and st.session_state.run_osa_button == True
+            ):
+                st.session_state.osa_running = True
+            else:
+                st.session_state.osa_running = False
+
+            st.container(height=5, border=False)
+            if st.button(
+                "Run OSA",
+                icon=":material/emoji_nature:",
+                use_container_width=True,
+                disabled=len(repo_path) == 0 or st.session_state.osa_running,
+                type="secondary" if len(repo_path) == 0 else "primary",
+                key="run_osa_button",
+            ):
+                if not st.session_state.git_token:
+                    st.warning(
+                        "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories."
+                    )
+                self.loop.run_until_complete(self.run_osa_tool(repo_path))
+                st.session_state.osa_running = False
 
     def get_model_config(self, provider: str, model: str) -> dict:
         """Get model configuration based on provider."""
@@ -142,21 +116,18 @@ class ReadmeAIApp:
             env = os.environ.copy()
 
             # Убедимся, что GIT_TOKEN передается в процесс
-            if self.git_token:
-                env["GIT_TOKEN"] = self.git_token
+            if st.session_state.git_token:
+                env["GIT_TOKEN"] = st.session_state.git_token
 
             cmd = [
                 "osa-tool",
-                "-r", repo_path,
+                "-r",
+                repo_path,
+                "-m",
+                st.session_state.mode_select,
+                "--web-mode",
                 "--delete-dir",
             ]
-
-            if st.session_state.translate_dirs:
-                cmd.append("--translate-dirs")
-            if st.session_state.generate_workflows:
-                cmd.append("--generate-workflows")
-            if st.session_state.ensure_license:
-                cmd.append("--ensure-license")
 
             process = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -178,7 +149,7 @@ class ReadmeAIApp:
                     output_container.text_area(
                         "Console Output",
                         value=stdout_accumulated,
-                        height=150,
+                        height=350,
                     )
 
             returncode = await process.wait()
@@ -188,7 +159,9 @@ class ReadmeAIApp:
                 stderr_output = await process.stderr.read()
                 error_message = stderr_output.decode().strip()
                 st.error(f"Error running OSA tool: {error_message}")
-                logger.error(f"OSA tool execution failed with code {returncode}: {error_message}")
+                logger.error(
+                    f"OSA tool execution failed with code {returncode}: {error_message}"
+                )
 
         except Exception as e:
             st.error(f"Error executing OSA tool: {e!s}")
@@ -196,26 +169,24 @@ class ReadmeAIApp:
 
     def run(self) -> None:
         """Run the Streamlit application."""
-        self.render_header()
 
         if not st.experimental_user.is_logged_in:
-            if st.button("Log in with AimClub"):
-                st.login("aimclub")
-            if st.button("Log in with Google"):
-                st.login("google")
+            render_login_page()
             st.stop()
 
-        repo_path = self.render_sidebar()
-        st.button("Log out", on_click=st.logout)
-        st.markdown(f"Welcome! {st.experimental_user.name}")
+        render_sidebar_page()
 
-        col1, _ = st.columns(2)
-        with col1:
-            if st.button("Run OSA", use_container_width=True):
-                if not self.git_token:
-                    st.warning(
-                        "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories.")
-                self.loop.run_until_complete(self.run_osa_tool(repo_path))
+        tab1, tab2 = st.tabs(
+            [
+                ":material/home: Home",
+                ":material/settings: Configuration",
+            ]
+        )
+        with tab1:
+            self.render_main_page()
+
+        with tab2:
+            render_configuration_page()
 
     def __del__(self):
         """Cleanup the event loop on deletion."""
@@ -225,6 +196,7 @@ class ReadmeAIApp:
             except Exception as e:
                 logger.error(f"Error closing event loop: {e}")
 
+
 if __name__ == "__main__":
-    app = ReadmeAIApp()
+    app = OsaToolApp()
     app.run()
