@@ -1,9 +1,10 @@
 import streamlit as st
 
 
-def render_sidebar_page() -> None:
+def render_sidebar_element() -> None:
     """Render sidebar with configuration options."""
     with st.sidebar:
+        # st.logo("assets/osa_logo.png", size="large")
         username = st.experimental_user.get("name", "Username")
         st.markdown(
             f'<h1 style="text-align: center;">Welcome, {username} 👋</h1>',
@@ -14,6 +15,7 @@ def render_sidebar_page() -> None:
 
         _, center, _ = st.columns([0.2, 0.6, 0.2])
         with center:
+            st.write(st.session_state.tmpdirname)
             st.link_button(
                 "About",
                 url="https://github.com/ITMO-NSS-team/Open-Source-Advisor",
