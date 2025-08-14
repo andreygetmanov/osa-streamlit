@@ -68,6 +68,15 @@ def render_git_settings_block() -> None:
             '<h5 style="text-align: center;">Git settings</h5>',
             unsafe_allow_html=True,
         )
+        token_status = (
+            "✅ Found" if st.session_state.git_token else "❌ Not found in .env"
+        )
+        st.info(f"GIT_TOKEN status: {token_status}")
+
+        if not st.session_state.git_token:
+            st.warning(
+                "GIT_TOKEN not found in .env file. Some features may not work correctly."
+            )
         st.text_input(
             label="Branch",
             key="branch",
@@ -86,19 +95,28 @@ def render_git_settings_block() -> None:
             )
         with right:
             st.checkbox(
-                label="Delete directory",
+                label="No fork",
+                key="no_fork",
                 help="""
+                        Avoid create fork for target repository  
+                        Default: False""",
+            )
+
+
+@st.fragment
+def render_osa_settings_block() -> None:
+    with st.container(border=True):
+        st.markdown(
+            '<h5 style="text-align: center;">OSA settings</h5>',
+            unsafe_allow_html=True,
+        )
+        st.checkbox(
+            label="Delete directory",
+            help="""
                 Enable deleting the downloaded repository after processing (Linux only)  
                 Default: False""",
-                value=True,
-                disabled=True,
-            )
-        st.checkbox(
-            label="No fork",
-            key="no_fork",
-            help="""
-                    Avoid create fork for target repository  
-                    Default: False""",
+            value=True,
+            disabled=True,
         )
 
 
@@ -111,7 +129,7 @@ def render_llm_settings_block() -> None:
         )
         st.selectbox(
             label="API",
-            options=("llama", "openai", "ollama"),
+            options=("itmo", "llama", "openai", "ollama"),
             help="""
                 LLM API service provider  
                 Default: llama
@@ -131,26 +149,33 @@ def render_llm_settings_block() -> None:
                 Specific LLM model to use  
                 Default: gpt-3.5-turbo""",
         )
+        st.number_input(
+            label="Maximum number of tokens",
+            value=4096,
+            help="""
+                Maximum number of tokens the model can generate in a single response  
+                Default: 4096""",
+        )
+        st.selectbox(
+            label="Temperature",
+            options=(None, 0, 1),
+            help="""
+                Sampling temperature to use for the LLM output (0 = deterministic, 1 = creative)  
+                Default: None""",
+        )
+        st.text_input(
+            label="Top-p (Nucleus Sampling)",
+            help="""
+                Nucleus sampling probability  
+                Default: None""",
+        )
 
 
 def render_configuration_tab() -> None:
     left, center, right = st.columns([1, 1, 1])
-
     with left:
-        render_article_block()
-
+        render_osa_settings_block()
     with center:
-        token_status = (
-            "✅ Found" if st.session_state.git_token else "❌ Not found in .env"
-        )
-        st.info(f"GIT_TOKEN status: {token_status}")
-
-        if not st.session_state.git_token:
-            st.warning(
-                "GIT_TOKEN not found in .env file. Some features may not work correctly."
-            )
-
         render_git_settings_block()
-
     with right:
         render_llm_settings_block()
