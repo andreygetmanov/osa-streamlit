@@ -1,10 +1,67 @@
 import asyncio
-import logging
-import os
+import tempfile
 
 import streamlit as st
 
-logger = logging.getLogger(__name__)
+from utils import run_osa_tool
+
+
+@st.dialog("Add an Article")
+def add_article(type) -> None:
+    article = None
+    if type == "URL":
+        article = st.text_input("Paste URL")
+    elif type == "File":
+        article = st.file_uploader("Upload Article", ["pdf"])
+
+    st.container(height=5, border=False)
+
+    if st.button(
+        "Submit",
+        disabled=not article,
+        use_container_width=True,
+        type="primary",
+        help="""Select a README template for a repository with an article.
+    Or provide a link to the pdf file""",
+    ):
+        if type == "File":
+            tmpfilename = tempfile.NamedTemporaryFile(
+                delete=False, dir=st.session_state.tmpdirname, suffix=".pdf"
+            )
+            tmpfilename.write(article.getvalue())
+            article = tmpfilename.name
+        st.session_state.article = {"data": article, "type": type}
+        st.rerun()
+
+
+@st.fragment
+def render_article_block() -> None:
+    help_text = """Select a README template for a repository with an article  
+                    or provide a link to the PDF file  
+                    `Default: None`"""
+    if "article" not in st.session_state:
+        option_map = {
+            "URL": ":material/globe: Paste URL",
+            "File": ":material/upload_file: Upload Article",
+        }
+        selection = st.pills(
+            "Article",
+            options=option_map.keys(),
+            format_func=lambda option: option_map[option],
+            selection_mode="single",
+            help=help_text,
+            width="stretch",
+        )
+        if selection:
+            add_article(selection)
+    else:
+        st.caption("Article", help=help_text)
+        st.write(
+            f"Article added via **{st.session_state.article.get("type")}**: `{st.session_state.article.get("data")}`"
+        )
+        if st.button(":material/delete: Remove", use_container_width=True):
+            del st.session_state["article"]
+            st.rerun()
 
 
 def render_input_block() -> None:
@@ -16,28 +73,30 @@ def render_input_block() -> None:
         label="Repository URL",
         key="repo_url",
         help="""Enter a GitHub repository URL  
-            Example: https://github.com/aimclub/OSA""",
+            **Example: https://github.com/aimclub/OSA**""",
         placeholder="https://github.com/aimclub/OSA",
     )
     st.container(height=5, border=False)
 
-    st.selectbox(
-        label="Mode",
-        key="mode_select",
-        options=("basic", "auto", "advanced"),
-        help="""
+    left, right = st.columns(2, gap="large")
+    with left:
+        st.selectbox(
+            label="Mode",
+            key="mode_select",
+            options=("basic", "auto", "advanced"),
+            help="""
                 Operation mode for repository processing  
-                Default: basic
+                `Default: auto`
                 """,
-    )
-    _, right = st.columns([0.02, 0.95])
-    with right:
+        )
         multi = """Select the operation mode for repository processing:  
-                    - **Basic:** *run a minimal predefined set of tasks.*  
-                    - **Auto**: *automatically determine necessary actions based on repository analysis.*  
+                    - **Basic:** *run a minimal predefined set of tasks;*  
+                    - **Auto**: *automatically determine necessary actions based on repository analysis;*  
                     - **Advanced**: *run all enabled features based on a provided configuration.*  
                 """
         st.markdown(multi)
+    with right:
+        render_article_block()
 
 
 def render_run_block() -> None:
@@ -59,34 +118,51 @@ def render_run_block() -> None:
             st.warning(
                 "GIT_TOKEN not found in .env file. The tool may not work correctly with private repositories."
             )
-        asyncio.run(run_osa_tool())
-        st.rerun()
+        _, right = st.columns([0.35, 0.5])
+        with right:
+            with st.spinner(text="In progress...", show_time=True, width="stretch"):
+                asyncio.run(run_osa_tool())
+            st.rerun()
 
 
 @st.fragment
 def render_output_block() -> None:
     if "output_logs" in st.session_state:
         st.divider()
-        if st.session_state.output_exit_code == 0:
-            left, right = st.columns([0.8, 0.2], vertical_alignment="center")
-            with left:
-                st.success(st.session_state.output_message)
-            with right:
-                st.download_button(
-                    label="Download Report",
-                    data="test",
-                    file_name="data.csv",
-                    mime="text/csv",
-                    icon=":material/download:",
-                    use_container_width=True,
+        left, right = st.columns([0.8, 0.2], vertical_alignment="center")
+        with left:
+            if st.session_state.output_exit_code == 0:
+                st.success(
+                    st.session_state.output_message, icon=":material/check_circle:"
                 )
-        else:
-            st.error(st.session_state.output_message)
-        with st.expander("See console output"):
-            st.code(
-                st.session_state.output_logs,
-                height=350,
-            )
+            else:
+                st.error(st.session_state.output_message, icon=":material/error:")
+        with right:
+            if "output_report_path" in st.session_state:
+                with open(st.session_state.output_report_path, "rb") as file:
+                    st.download_button(
+                        label="Download Report",
+                        data=file,
+                        file_name=st.session_state.output_report_filename,
+                        mime="application/pdf",
+                        icon=":material/download:",
+                        use_container_width=True,
+                    )
+            else:
+                with st.container(border=True):
+                    st.markdown(
+                        f'<p style="text-align: center;">PDF Report was not created.</p>',
+                        unsafe_allow_html=True,
+                    )
+        if "output_about_section" in st.session_state:
+            with st.expander("About section", expanded=True, icon=":material/article:"):
+                st.write(st.session_state.output_about_section)
+        # TODO: developer only
+        # with st.expander("See console output"):
+        #     st.code(
+        #         st.session_state.output_logs,
+        #         height=350,
+        #     )
 
 
 def render_main_tab() -> None:
@@ -95,73 +171,3 @@ def render_main_tab() -> None:
         render_input_block()
         render_run_block()
     render_output_block()
-
-
-async def run_osa_tool() -> None:
-    """Run the osa-tools application."""
-    try:
-        # Создаем копию текущих переменных окружения
-        env = os.environ.copy()
-
-        # Убедимся, что GIT_TOKEN передается в процесс
-        if st.session_state.git_token:
-            env["GIT_TOKEN"] = st.session_state.git_token
-
-        cmd = [
-            "osa-tool",
-            "-r",
-            st.session_state.repo_url,
-            "-m",
-            st.session_state.mode_select,
-            "--web-mode",
-            "--delete-dir",
-        ]
-
-        if "article" in st.session_state:
-            cmd.extend(("--article", st.session_state.article.get("data")))
-        if "branch" in st.session_state:
-            cmd.extend(("--branch", st.session_state.branch))
-        if st.session_state.no_fork:
-            cmd.append("--no-fork")
-        if st.session_state.no_pull_request:
-            cmd.append("--no-pull-request")
-
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=env,
-        )
-
-        output_container = st.empty()
-        st.session_state.output_logs = f"{cmd}\n"
-        last_line = None
-
-        while True:
-            stdout_line = await process.stdout.readline()
-            if not stdout_line:
-                break
-
-            if line := stdout_line.decode().strip():
-                last_line = line
-                st.session_state.output_logs += line + "\n"
-                output_container.code(
-                    st.session_state.output_logs,
-                    height=350,
-                )
-                await asyncio.sleep(0.5)
-
-        st.session_state.output_exit_code = await process.wait()
-        if st.session_state.output_exit_code == 0:
-            st.session_state.output_message = "Everything is alright"
-        else:
-            stderr_output = await process.stderr.read()
-            error_message = stderr_output.decode().strip()
-            st.session_state.output_message = f"**Error running OSA tool**: `{last_line}`"
-            logger.error(
-                f"OSA tool execution failed with code {st.session_state.output_exit_code}: {last_line}"
-            )
-
-    except Exception as e:
-        st.error(f"Error executing OSA tool: {e!s}")
-        logger.error(f"OSA tool execution failed: {e!s}", exc_info=True)
