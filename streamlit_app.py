@@ -32,27 +32,19 @@ def setup_page_config() -> None:
     )
 
 
-@st.cache_data(show_spinner=False)
-def create_tmp_dir():
-    return tempfile.TemporaryDirectory(delete=False).name
-
-
-@st.cache_data(show_spinner=False)
-def get_git_token():
-    return os.getenv("GIT_TOKEN")
-
-
 def main() -> None:
     """Run the Streamlit application."""
 
     setup_page_config()
 
-    # if not st.experimental_user.is_logged_in:
+    # if not st.user.is_logged_in:
     #     render_login_screen()
     #     st.stop()
 
-    st.session_state.tmpdirname = create_tmp_dir()
-    st.session_state.git_token = get_git_token()
+    if "tmpdirname" not in st.session_state:
+        st.session_state.tmpdirname = tempfile.TemporaryDirectory(delete=False).name
+    if "git_token" not in st.session_state:
+        st.session_state.git_token = os.getenv("GIT_TOKEN")
 
     render_sidebar_element()
 

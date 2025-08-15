@@ -5,7 +5,7 @@ def render_sidebar_element() -> None:
     """Render sidebar with configuration options."""
     with st.sidebar:
         # st.logo("assets/osa_logo.png", size="large")
-        username = st.experimental_user.get("name", "Username")
+        username = st.user.get("name", "Username")
         st.markdown(
             f'<h1 style="text-align: center;">Welcome, {username} 👋</h1>',
             unsafe_allow_html=True,
@@ -15,7 +15,8 @@ def render_sidebar_element() -> None:
 
         _, center, _ = st.columns([0.2, 0.6, 0.2])
         with center:
-            st.write(st.session_state.tmpdirname)
+            # TODO: developer only
+            # st.write(st.session_state.tmpdirname)
             st.link_button(
                 "About",
                 url="https://github.com/ITMO-NSS-team/Open-Source-Advisor",
@@ -42,6 +43,9 @@ def render_sidebar_element() -> None:
             font-size: 24px;
             margin: 0;
             width: 100%;
+            }
+            section[data-testid="stSidebar"] {
+            width: 350px !important;
             }
             </style>
             """
