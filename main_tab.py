@@ -57,7 +57,7 @@ def render_article_block() -> None:
     else:
         st.caption("Article", help=help_text)
         st.write(
-            f"Article added via **{st.session_state.article.get("type")}**: `{st.session_state.article.get("data")}`"
+            f"Article added via **{st.session_state.article.get('type')}**: `{st.session_state.article.get('data')}`"
         )
         if st.button(":material/delete: Remove", use_container_width=True):
             del st.session_state["article"]

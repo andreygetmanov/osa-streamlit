@@ -42,7 +42,7 @@ def main() -> None:
         st.stop()
 
     if "tmpdirname" not in st.session_state:
-        st.session_state.tmpdirname = tempfile.TemporaryDirectory(delete=False).name
+        st.session_state.tmpdirname = tempfile.mkdtemp()
     if "git_token" not in st.session_state:
         st.session_state.git_token = os.getenv("GIT_TOKEN")
 
