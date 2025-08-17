@@ -37,9 +37,9 @@ def main() -> None:
 
     setup_page_config()
 
-    # if not st.user.is_logged_in:
-    #     render_login_screen()
-    #     st.stop()
+    if not st.user.is_logged_in:
+        render_login_screen()
+        st.stop()
 
     if "tmpdirname" not in st.session_state:
         st.session_state.tmpdirname = tempfile.TemporaryDirectory(delete=False).name
