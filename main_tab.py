@@ -97,15 +97,15 @@ def render_input_block() -> None:
         st.markdown(multi)
     with right:
         render_article_block()
+    st.container(height=5, border=False)
 
 
-def render_run_block() -> None:
+@st.fragment
+def render_run_block(output_container) -> None:
     if "run_osa_button" in st.session_state and st.session_state.run_osa_button == True:
         st.session_state.running = True
     else:
         st.session_state.running = False
-
-    st.container(height=5, border=False)
     if st.button(
         "Run OSA",
         icon=":material/emoji_nature:",
@@ -121,53 +121,68 @@ def render_run_block() -> None:
         _, right = st.columns([0.35, 0.5])
         with right:
             with st.spinner(text="In progress...", show_time=True, width="stretch"):
-                asyncio.run(run_osa_tool())
+                asyncio.run(run_osa_tool(output_container))
             st.rerun()
 
 
 @st.fragment
-def render_output_block() -> None:
-    if "output_logs" in st.session_state:
-        st.divider()
-        left, right = st.columns([0.8, 0.2], vertical_alignment="center")
-        with left:
-            if st.session_state.output_exit_code == 0:
-                st.success(
-                    st.session_state.output_message, icon=":material/check_circle:"
-                )
-            else:
-                st.error(st.session_state.output_message, icon=":material/error:")
-        with right:
-            if "output_report_path" in st.session_state:
-                with open(st.session_state.output_report_path, "rb") as file:
-                    st.download_button(
-                        label="Download Report",
-                        data=file,
-                        file_name=st.session_state.output_report_filename,
-                        mime="application/pdf",
-                        icon=":material/download:",
-                        use_container_width=True,
-                    )
-            else:
-                with st.container(border=True):
+def render_output_block(output_container) -> None:
+    with output_container:
+        with st.container():
+            if "output_logs" in st.session_state:
+                st.divider()
+                if "output_exit_code" not in st.session_state:
                     st.markdown(
-                        f'<p style="text-align: center;">PDF Report was not created.</p>',
+                        f'<p style="text-align: center;">No output.</p>',
                         unsafe_allow_html=True,
                     )
-        if "output_about_section" in st.session_state:
-            with st.expander("About section", expanded=True, icon=":material/article:"):
-                st.write(st.session_state.output_about_section)
-        # TODO: developer only
-        # with st.expander("See console output"):
-        #     st.code(
-        #         st.session_state.output_logs,
-        #         height=350,
-        #     )
+                    return
+                left, right = st.columns([0.8, 0.2], vertical_alignment="center")
+                with left:
+                    if st.session_state.output_exit_code == 0:
+                        st.success(
+                            st.session_state.output_message,
+                            icon=":material/check_circle:",
+                        )
+                    else:
+                        st.error(
+                            st.session_state.output_message, icon=":material/error:"
+                        )
+                with right:
+                    if "output_report_path" in st.session_state:
+                        with open(st.session_state.output_report_path, "rb") as file:
+                            st.download_button(
+                                label="Download Report",
+                                data=file,
+                                file_name=st.session_state.output_report_filename,
+                                mime="application/pdf",
+                                icon=":material/download:",
+                                use_container_width=True,
+                            )
+                    else:
+                        with st.container(border=True):
+                            st.markdown(
+                                f'<p style="text-align: center;">PDF Report was not created.</p>',
+                                unsafe_allow_html=True,
+                            )
+                if "output_about_section" in st.session_state:
+                    with st.expander(
+                        "About section", expanded=True, icon=":material/article:"
+                    ):
+                        st.write(st.session_state.output_about_section)
+                # TODO: developer only
+                with st.expander("See Console Output", icon=":material/terminal:"):
+                    st.code(
+                        st.session_state.output_logs,
+                        height=350,
+                    )
 
 
 def render_main_tab() -> None:
     _, center, _ = st.columns([0.1, 0.8, 0.1])
     with center:
         render_input_block()
-        render_run_block()
-    render_output_block()
+    output_container = st.empty()
+    with center:
+        render_run_block(output_container)
+    render_output_block(output_container)

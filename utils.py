@@ -8,7 +8,7 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 
-async def run_osa_tool() -> None:
+async def run_osa_tool(output_container) -> None:
     """Run the osa-tools application."""
     try:
         # Clear streamlit state
@@ -58,7 +58,6 @@ async def run_osa_tool() -> None:
             env=env,
         )
 
-        output_container = st.empty()
         st.session_state.output_logs = f"{cmd}\n"
         last_line = None
 
@@ -76,7 +75,6 @@ async def run_osa_tool() -> None:
                     st.session_state.output_report_filename = match.group(1).split("/")[
                         -1
                     ]
-
                 if match := re.search(
                     r"(.*You can add the following.*|.*- Description:.*|.*- Homepage:.*|.*- Topics:.*|.*Please review and add them to your repository.*)",
                     line,
@@ -87,10 +85,12 @@ async def run_osa_tool() -> None:
 
                 st.session_state.output_logs += line + "\n"
                 # TODO: developer only
-                # output_container.code(
-                #     st.session_state.output_logs,
-                #     height=350,
-                # )
+                output_container.expander(
+                    "See Console Output", icon=":material/terminal:"
+                ).code(
+                    st.session_state.output_logs,
+                    height=350,
+                )
 
         st.session_state.output_exit_code = await process.wait()
         if st.session_state.output_exit_code == 0:
